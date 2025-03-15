@@ -40,6 +40,15 @@
     .eval-buttons button {
       margin-right: 5px;
     }
+    /* FEN text input styling */
+    #fenContainer {
+      margin-top: 10px;
+    }
+    #fenText {
+      width: 240px;
+      padding: 4px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -65,6 +74,12 @@
     
     <!-- Chessboard -->
     <div id="board"></div>
+    
+    <!-- FEN Display and Copy -->
+    <div id="fenContainer">
+      FEN: <input type="text" id="fenText" readonly value="">
+      <button onclick="copyFEN()">Copy</button>
+    </div>
     
     <!-- Bottom Row with Evaluation Range Buttons and Search Controls -->
     <div class="bottom-row">
@@ -169,6 +184,12 @@
       currentFEN = fens[Math.floor(Math.random() * fens.length)];
       console.log("Using Random FEN:", currentFEN);
 
+      // Reset the FEN text background.
+      document.getElementById("fenText").style.backgroundColor = "";
+
+      // Update the FEN text input so it can be copied.
+      document.getElementById("fenText").value = currentFEN;
+
       stockfish.postMessage(`position fen ${currentFEN}`);
       stockfish.postMessage(`go depth ${depth}`);
 
@@ -214,6 +235,15 @@
       document.getElementById("stopSearchBtn").disabled = true;
     }
 
+    // Copy the FEN to clipboard and highlight the text.
+    function copyFEN() {
+      const fenInput = document.getElementById("fenText");
+      fenInput.select();
+      fenInput.setSelectionRange(0, 99999); // For mobile devices
+      document.execCommand("copy");
+      fenInput.style.backgroundColor = "lightgreen";
+    }
+
     window.onload = function () {
       loadStockfish();
       board = Chessboard("board", {
@@ -224,4 +254,3 @@
   </script>
 </body>
 </html>
-
