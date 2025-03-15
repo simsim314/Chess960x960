@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Chessboard.js</title>
+
+    <!-- Load jQuery (Required for Chessboard.js) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Load Chessboard.js Locally -->
+    <link rel="stylesheet" href="chessboardjs/css/chessboard-1.0.0.min.css">
+    
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; }
+        #board { width: 400px; height: 400px; margin: 20px auto; }
+    </style>
+</head>
+<body>
+    <h1>Test Chessboard.js</h1>
+    <div id="board"></div>
+
+    <!-- Load Chessboard.js Locally -->
+    <script src="chessboardjs/js/chessboard-1.0.0.min.js"></script>
+
+    <script>
+        window.onload = function() {
+            console.log("Initializing Chessboard...");
+            var board = Chessboard('board', {
+                position: 'start',
+                pieceTheme: "chessboardjs/img/chesspieces/wikipedia/{piece}.png"
+            });
+            console.log("Chessboard initialized.");
+        };
+    </script>
+</body>
+</html>
+

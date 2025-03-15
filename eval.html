@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stockfish Chess960 Evaluator</title>
+  <!-- Load jQuery (Required for Chessboard.js) -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- Load Chessboard.js Locally -->
+  <link rel="stylesheet" href="chessboardjs/css/chessboard-1.0.0.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 5px;
+      padding: 5px;
+    }
+    /* Container keeps everything tight and left aligned */
+    .container {
+      display: inline-block;
+      text-align: left;
+      margin: 10px;
+    }
+    button {
+      font-size: 14px;
+      padding: 5px 10px;
+      margin: 3px;
+      cursor: pointer;
+    }
+    /* Fixed-size chessboard left aligned */
+    #board {
+      width: 360px;
+      height: 360px;
+      margin: 10px 0;
+    }
+    .depth-control,
+    .search-controls,
+    .bottom-row {
+      margin: 5px 0;
+    }
+    .eval-buttons button {
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Title with status indicator updated dynamically -->
+    <h1>Stockfish Chess960 Evaluator <span id="stockfishStatus"></span></h1>
+    
+    <!-- New Position Button -->
+    <button id="loadFENBtn" onclick="loadRandomFEN()" disabled>New Pisition</button>
+    
+    <!-- Evaluation line on a new line -->
+    <h3 id="evaluationText">
+      Evaluation (Depth <span id="depthValue">12</span>): 
+      <span id="evaluation">Waiting for evaluation...</span>
+    </h3>
+    
+    <!-- Depth control on a new line -->
+    <div class="depth-control">
+      <span>Depth <span id="depthLabel">12</span>. </span>
+      <button onclick="changeDepth(1)">+</button>
+      <button onclick="changeDepth(-1)">-</button>
+    </div>
+    
+    <!-- Chessboard -->
+    <div id="board"></div>
+    
+    <!-- Bottom Row with Evaluation Range Buttons and Search Controls -->
+    <div class="bottom-row">
+      <div class="eval-buttons">
+        <button onclick="findPosition(-99.99, -2.00)">-+</button>
+        <button onclick="findPosition(-2.00, -1.00)">∓</button>
+        <button onclick="findPosition(-1.00, -0.30)">⩱</button>
+        <button onclick="findPosition(-0.30, 0.30)">=</button>
+        <button onclick="findPosition(0.30, 1.00)">⩲</button>
+        <button onclick="findPosition(1.00, 2.00)">±</button>
+        <button onclick="findPosition(2.00, 99.99)">+−</button>
+      </div>
+      <div class="search-controls">
+        <button id="stopSearchBtn" onclick="stopSearch()" disabled>Stop Search</button>
+        <span id="searchStatus"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load Chessboard.js & Chess.js Locally -->
+  <script src="chessboardjs/js/chessboard-1.0.0.min.js"></script>
+  <script src="chess.min.js"></script>
+
+  <script>
+    let stockfish;
+    let board;
+    let fens = []; // FENs from file
+    let depth = 12; // Start depth at 12
+    let currentFEN = ""; // Currently loaded position
+    let searching = false; // Flag for search mode
+    let evalMatchesRange = null; // Function to check evaluation match
+
+    function loadStockfish() {
+      if (typeof Worker !== "undefined") {
+        stockfish = new Worker("stockfish.js");
+
+        // Listen for errors from the worker.
+        stockfish.onerror = function (error) {
+          console.error("Stockfish load error:", error);
+          document.getElementById("stockfishStatus").innerHTML = '<span style="color:red;">X [Faied to find Stockfish]</span>';
+        };
+
+        stockfish.onmessage = function (event) {
+          let message = event.data;
+          console.log("Stockfish:", message);
+
+          // Process evaluation when the info message at the required depth arrives.
+          if (message.startsWith(`info depth ${depth}`) && message.includes("score cp")) {
+            let evalMatch = message.match(/score cp (-?\d+)/);
+            if (evalMatch) {
+              let centipawns = parseInt(evalMatch[1], 10);
+              let humanReadable = (centipawns / 100).toFixed(2);
+              document.getElementById("evaluation").textContent = `${humanReadable} pawns`;
+
+              if (searching) {
+                if (evalMatchesRange(parseFloat(humanReadable))) {
+                  searching = false;
+                  document.getElementById("searchStatus").innerHTML = `<span style="color:green;">Found ✔</span>`;
+                  document.getElementById("stopSearchBtn").disabled = true;
+                } else {
+                  // Wait 150ms then try the next position.
+                  setTimeout(function () {
+                    loadRandomFEN();
+                  }, 150);
+                }
+              }
+            }
+          }
+
+          // When Stockfish confirms UCI, update UI and set indicator to the green check mark.
+          if (message.toLowerCase().includes("uciok")) {
+            document.getElementById("stockfishStatus").innerHTML = '<span style="color:green;">✔</span>';
+            document.getElementById("loadFENBtn").disabled = false;
+            loadFENFile();
+          }
+        };
+
+        console.log("Stockfish loading...");
+        stockfish.postMessage("uci");
+      } else {
+        document.getElementById("stockfishStatus").innerHTML = '<span style="color:red;">X</span>';
+        alert("Your browser does not support Web Workers.");
+      }
+    }
+
+    function loadFENFile() {
+      fetch("chess960x960_fens.txt")
+        .then(response => response.text())
+        .then(text => {
+          fens = text.split("\n").filter(line => line.trim() !== "");
+          console.log("Loaded", fens.length, "FENs");
+          loadRandomFEN();
+        })
+        .catch(error => console.error("Error loading FEN file:", error));
+    }
+
+    function loadRandomFEN() {
+      if (fens.length === 0) {
+        console.error("FEN list is empty!");
+        return;
+      }
+      currentFEN = fens[Math.floor(Math.random() * fens.length)];
+      console.log("Using Random FEN:", currentFEN);
+
+      stockfish.postMessage(`position fen ${currentFEN}`);
+      stockfish.postMessage(`go depth ${depth}`);
+
+      if (board) {
+        board.position(currentFEN);
+      } else {
+        console.error("Chessboard is not initialized.");
+      }
+      document.getElementById("evaluation").textContent = "Evaluating...";
+    }
+
+    function changeDepth(amount) {
+      depth = Math.max(1, depth + amount);
+      document.getElementById("depthValue").textContent = depth;
+      document.getElementById("depthLabel").textContent = depth;
+      evaluateCurrentPosition();
+    }
+
+    function evaluateCurrentPosition() {
+      if (!currentFEN) {
+        console.error("No FEN loaded yet!");
+        return;
+      }
+      console.log(`Re-evaluating at depth ${depth}: ${currentFEN}`);
+      stockfish.postMessage(`position fen ${currentFEN}`);
+      stockfish.postMessage(`go depth ${depth}`);
+      document.getElementById("evaluation").textContent = "Evaluating...";
+    }
+
+    function findPosition(minEval, maxEval) {
+      searching = true;
+      evalMatchesRange = function (evalScore) {
+        return evalScore >= minEval && evalScore <= maxEval;
+      };
+      document.getElementById("searchStatus").innerHTML = `<span style="color:red;">Searching...❓</span>`;
+      document.getElementById("stopSearchBtn").disabled = false;
+      loadRandomFEN();
+    }
+
+    function stopSearch() {
+      searching = false;
+      document.getElementById("searchStatus").innerHTML = "";
+      document.getElementById("stopSearchBtn").disabled = true;
+    }
+
+    window.onload = function () {
+      loadStockfish();
+      board = Chessboard("board", {
+        draggable: false,
+        pieceTheme: "chessboardjs/img/chesspieces/wikipedia/{piece}.png"
+      });
+    };
+  </script>
+</body>
+</html>
+
