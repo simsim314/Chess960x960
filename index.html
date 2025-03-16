@@ -9,37 +9,59 @@
   <!-- Load Chessboard.js Locally -->
   <link rel="stylesheet" href="chessboardjs/css/chessboard-1.0.0.min.css">
   <style>
+    /* Overall page styling: center everything */
     body {
       font-family: Arial, sans-serif;
-      margin: 5px;
-      padding: 5px;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
     }
-    /* Container keeps everything tight and left aligned */
+    /* Container for the main content */
     .container {
-      display: inline-block;
-      text-align: left;
-      margin: 10px;
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      text-align: center;
     }
+    h1 {
+      margin-top: 0;
+    }
+    
+    /* Modern button styling */
     button {
+      background-color: #409EFF;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 16px;
       font-size: 14px;
-      padding: 5px 10px;
-      margin: 3px;
       cursor: pointer;
+      margin: 5px;
+      transition: background-color 0.3s;
     }
-    /* Fixed-size chessboard left aligned */
+    button:hover {
+      background-color: #66b1ff;
+    }
+
+    /* Fixed-size chessboard */
     #board {
       width: 360px;
       height: 360px;
-      margin: 10px 0;
+      margin: 20px auto;
     }
     .depth-control,
     .search-controls,
     .bottom-row {
-      margin: 5px 0;
+      margin: 10px 0;
     }
     .eval-buttons button {
       margin-right: 5px;
     }
+    
     /* FEN text input styling */
     #fenContainer {
       margin-top: 10px;
@@ -56,16 +78,16 @@
     <!-- Title with status indicator updated dynamically -->
     <h1>Chess960x960 Position Evaluator<span id="stockfishStatus"></span></h1>
     
-    <!-- New Position Button -->
+    <!-- New Position Button (string preserved as provided) -->
     <button id="loadFENBtn" onclick="loadRandomFEN()" disabled>New Pisition</button>
     
-    <!-- Evaluation line on a new line -->
+    <!-- Evaluation line -->
     <h3 id="evaluationText">
       Evaluation (Depth <span id="depthValue">12</span>): 
       <span id="evaluation">Waiting for evaluation...</span>
     </h3>
     
-    <!-- Depth control on a new line -->
+    <!-- Depth control -->
     <div class="depth-control">
       <span>Depth <span id="depthLabel">12</span>. </span>
       <button onclick="changeDepth(1)">+</button>
@@ -102,7 +124,6 @@
   <!-- Load Chessboard.js & Chess.js Locally -->
   <script src="chessboardjs/js/chessboard-1.0.0.min.js"></script>
   <script src="chess.min.js"></script>
-
   <script>
     let stockfish;
     let board;
